@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>36周期年度计划</title>
 <style>
 /* Self-contained fonts - no external dependencies */
@@ -316,6 +316,96 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   border-radius:8px;padding:9px 16px;font-size:11px;box-shadow:0 8px 32px rgba(0,0,0,.4);
   transform:translateY(70px);opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);pointer-events:none;font-family:var(--mono)}
 .toast.show{transform:translateY(0);opacity:1}
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;
+  background:rgba(19,22,31,.97);backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);z-index:250;
+  padding:4px 0 8px;}
+.mn-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;cursor:pointer;padding:6px 4px;
+  color:var(--t3);font-size:9px;font-family:var(--mono);transition:color .15s;
+  -webkit-tap-highlight-color:transparent;}
+.mn-btn.active{color:var(--accent)}
+.mn-icon{font-size:20px;line-height:1}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE - TABLET & MOBILE
+══════════════════════════════════════════ */
+@media (max-width:1024px){
+  .sidebar{width:220px}
+  .period-todo-col{width:180px}
+  .hn-wrap{width:120px;min-width:120px}
+  .dh-ns{width:120px;min-width:120px}
+  .dc{width:30px;height:26px}
+  .dnc{width:30px}
+}
+@media (max-width:768px){
+  .app{height:auto;min-height:100vh}
+  .main{flex-direction:column;overflow:visible;height:auto}
+  .sidebar{
+    position:fixed;bottom:0;left:0;right:0;width:100%!important;
+    height:72vh;z-index:300;
+    border-right:none;border-top:1px solid var(--border);
+    border-radius:16px 16px 0 0;
+    transform:translateY(100%);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);
+    flex-direction:column;overflow:hidden;
+  }
+  .sidebar.mobile-open{transform:translateY(0)!important}
+  .sidebar.collapsed{transform:translateY(100%)!important;width:100%!important}
+  .sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299}
+  .sb-backdrop.show{display:block}
+  .sb-drag-handle{display:flex;justify-content:center;padding:8px 0 4px;cursor:grab;flex-shrink:0}
+  .sb-drag-bar{width:36px;height:4px;background:var(--border);border-radius:99px}
+  .header{padding:0 10px;gap:7px;height:48px}
+  .header-actions .btn-ghost{display:none}
+  .header-actions .btn-primary{display:flex}
+  .header-actions{gap:5px}
+  .btn{padding:5px 9px;font-size:11px}
+  .main-area{overflow:visible;height:auto}
+  .content-area{overflow:visible;padding:10px 10px 80px}
+  .tab-bar{display:none}
+  .mobile-nav{display:flex!important}
+  .period-body{flex-direction:column;gap:8px;padding:8px 10px}
+  .period-habits-col{overflow-x:auto;width:100%}
+  .period-todo-col{
+    width:100%!important;border-left:none;
+    border-top:1px solid var(--border);
+    padding-left:0;padding-top:10px;
+  }
+  .hn-wrap{width:100px;min-width:80px}
+  .dh-ns{width:100px;min-width:80px}
+  .dc{width:28px;height:26px}
+  .dc-inp{font-size:9px}
+  .dnc{width:28px;font-size:8px}
+  .period-hd{flex-wrap:wrap;gap:5px;padding:8px 10px}
+  .p-dates{font-size:9px}
+  .filter-bar{gap:5px}
+  .search-box{width:100%;margin-left:0;margin-top:4px}
+  .stats-grid{grid-template-columns:1fr}
+  .cal-hm{grid-template-columns:repeat(2,1fr)!important}
+  .cal-popup{
+    position:fixed!important;bottom:0!important;top:auto!important;
+    left:0!important;right:0!important;
+    max-width:100%!important;min-width:unset!important;
+    border-radius:16px 16px 0 0;
+  }
+  .hm-outer{-webkit-overflow-scrolling:touch}
+  .ps-day-tabs{-webkit-overflow-scrolling:touch}
+  .year-dropdown{min-width:80px}
+}
+@media (max-width:375px){
+  .dc{width:24px;height:24px}
+  .dnc{width:24px}
+  .hn-wrap{width:80px;min-width:70px}
+  .dh-ns{width:80px;min-width:70px}
+  .content-area{padding:8px 8px 80px}
+}
+@media (min-width:769px){
+  .mobile-nav{display:none!important}
+  .sb-backdrop{display:none!important}
+  .sb-drag-handle{display:none!important}
+}
+
 </style>
 </head>
 <body>
@@ -343,7 +433,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 
 <div class="main">
   <!-- SIDEBAR -->
-  <aside class="sidebar" id="sidebar">
+  <div class="sb-backdrop" id="sbBackdrop" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+<div class="sb-drag-handle"><div class="sb-drag-bar"></div></div>
     <div class="sb-head">
       <span>数据总览</span>
       <span id="sbYear" style="color:var(--accent);font-weight:700"></span>
@@ -569,7 +661,20 @@ document.addEventListener('click',e=>{if(!document.getElementById('yearSel').con
 
 // ═══════════════════════════ SIDEBAR ═══════════════════════════
 let sidebarOpen=true;
-function toggleSidebar(){sidebarOpen=!sidebarOpen;document.getElementById('sidebar').classList.toggle('collapsed',!sidebarOpen);}
+function isMobile(){return window.innerWidth<=768;}
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const bd=document.getElementById('sbBackdrop');
+  if(isMobile()){
+    const isOpen=sb.classList.contains('mobile-open');
+    sb.classList.toggle('mobile-open',!isOpen);
+    bd&&bd.classList.toggle('show',!isOpen);
+    sidebarOpen=!isOpen;
+  } else {
+    sidebarOpen=!sidebarOpen;
+    sb.classList.toggle('collapsed',!sidebarOpen);
+  }
+}
 
 function renderSidebar(){
   document.getElementById('sbYear').textContent=currentYear;
@@ -1199,10 +1304,26 @@ function applyTime(){
 }
 
 // ═══════════════════════════ TABS ═══════════════════════════
+function mobileTab(name,btn){
+  // Switch tab and update bottom nav active state
+  const tabMap={grid:0,heatmap:1,stats:2,journal:3};
+  const fakeTabEls=document.querySelectorAll('.tab');
+  if(fakeTabEls[tabMap[name]]) switchTab(name,fakeTabEls[tabMap[name]]);
+  document.querySelectorAll('.mn-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
 function switchTab(name,el){
   ['grid','heatmap','stats','journal'].forEach(t=>{document.getElementById('tab-'+t).style.display=t===name?'':'none';});
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
+  el&&el.classList.add('active');
+  // Close sidebar on mobile after tab switch
+  if(isMobile()){
+    const sb=document.getElementById('sidebar');
+    const bd=document.getElementById('sbBackdrop');
+    sb.classList.remove('mobile-open');
+    bd&&bd.classList.remove('show');
+    sidebarOpen=false;
+  }
   if(name==='heatmap')renderHeatmap();
   if(name==='stats')renderStats();
   if(name==='journal')renderJournal();
@@ -1325,6 +1446,7 @@ window.selectColor=selectColor;
 window.showCalPopup=showCalPopup;
 window.closeCalPopup=closeCalPopup;
 window.updateDayTime=updateDayTime;
+window.mobileTab=mobileTab;
 window.addTodo=addTodo;
 window.addTodoFromInp=addTodoFromInp;
 window.toggleTodo=toggleTodo;
@@ -1332,6 +1454,25 @@ window.updateTodo=updateTodo;
 window.deleteTodo=deleteTodo;
 
 </script>
+
+<nav class="mobile-nav" id="mobileNav">
+  <button class="mn-btn active" id="mnGrid" onclick="mobileTab('grid',this)">
+    <span class="mn-icon">📋</span>总览
+  </button>
+  <button class="mn-btn" id="mnHeatmap" onclick="mobileTab('heatmap',this)">
+    <span class="mn-icon">🔥</span>热力图
+  </button>
+  <button class="mn-btn" id="mnStats" onclick="mobileTab('stats',this)">
+    <span class="mn-icon">📈</span>统计
+  </button>
+  <button class="mn-btn" id="mnJournal" onclick="mobileTab('journal',this)">
+    <span class="mn-icon">📝</span>日志
+  </button>
+  <button class="mn-btn" id="mnSidebar" onclick="toggleSidebar()">
+    <span class="mn-icon">☰</span>菜单
+  </button>
+</nav>
+
 <div class="cal-popup" id="calPopup"><div class="cal-popup-title"><span id="calPopupTitle"></span><button class="cal-popup-close" onclick="closeCalPopup()">×</button></div><div id="calPopupBody"></div></div>
 </body>
 </html>
