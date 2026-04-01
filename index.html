@@ -163,7 +163,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .dh-ps{min-width:32px;flex-shrink:0}
 .dh-ds{width:22px;flex-shrink:0}
 /* Habit row */
-.hr{display:flex;align-items:center;gap:5px;margin-bottom:4px;min-height:28px}
+/* .hr defined in drag section above */
 .cat-dot{width:11px;height:11px;border-radius:50%;cursor:pointer;flex-shrink:0;border:none;transition:transform .15s}
 .cat-dot:hover{transform:scale(1.4)}
 .hn-wrap{width:150px;min-width:150px;flex-shrink:0;overflow:hidden}
@@ -458,6 +458,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 /* Day header spacers - must match habit row column widths exactly */
 .dh-slot-spc{width:84px;flex-shrink:0} /* matches h-slot-wrap: 10px icon + 2px gap + 72px input */
 .dh-memo-spc{width:20px;flex-shrink:0} /* matches h-memo-btn */
+
+/* ── Drag & Drop ── */
+.drag-handle{
+  cursor:grab;color:var(--t3);font-size:14px;flex-shrink:0;
+  padding:0 2px;line-height:1;user-select:none;
+  transition:color .15s;
+}
+.drag-handle:hover{color:var(--accent)}
+.drag-handle:active{cursor:grabbing}
+.hr{display:flex;align-items:center;gap:5px;margin-bottom:4px;min-height:28px;
+  transition:opacity .15s,transform .15s;border-radius:6px;}
+.hr.dragging{opacity:.35;transform:scale(.98)}
+.hr.drag-over{background:rgba(91,143,255,.08);outline:1.5px dashed var(--accent);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -848,7 +861,14 @@ function renderGrid(){
         </div>`;
       });
       const hasMemo=!!(h.memo&&h.memo.trim());
-      hH+=`<div class="hr">
+      hH+=`<div class="hr" draggable="true"
+        data-pidx="${pidx}" data-hidx="${hidx}"
+        ondragstart="onDragStart(event)"
+        ondragover="onDragOver(event)"
+        ondragleave="onDragLeave(event)"
+        ondrop="onDrop(event)"
+        ondragend="onDragEnd(event)">
+        <span class="drag-handle" title="拖动排序">⠿</span>
         <button class="cat-dot" style="background:${cc}" onclick="openCatMenu(event,${pidx},${hidx})" title="${cat.name}"></button>
         <div class="hn-wrap"><input class="hn-inp" value="${esc(h.name)}" placeholder="输入习惯名称…" onchange="updateName(${pidx},${hidx},this.value)"></div>
         <div class="h-slot-wrap">
@@ -1525,6 +1545,52 @@ document.addEventListener('click',e=>{
 
 
 
+
+// ══════════════════════════ DRAG & DROP ══════════════════════════
+let dragSrc={pidx:null,hidx:null};
+
+function onDragStart(e){
+  const el=e.currentTarget;
+  dragSrc.pidx=parseInt(el.dataset.pidx);
+  dragSrc.hidx=parseInt(el.dataset.hidx);
+  el.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain','');
+}
+function onDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  const el=e.currentTarget;
+  const tPidx=parseInt(el.dataset.pidx);
+  const tHidx=parseInt(el.dataset.hidx);
+  // Only allow drop within same period
+  if(tPidx===dragSrc.pidx && tHidx!==dragSrc.hidx){
+    el.classList.add('drag-over');
+  }
+}
+function onDragLeave(e){
+  e.currentTarget.classList.remove('drag-over');
+}
+function onDragEnd(e){
+  // Clean up all states
+  document.querySelectorAll('.hr').forEach(el=>{
+    el.classList.remove('dragging','drag-over');
+  });
+}
+function onDrop(e){
+  e.preventDefault();
+  const el=e.currentTarget;
+  const tPidx=parseInt(el.dataset.pidx);
+  const tHidx=parseInt(el.dataset.hidx);
+  el.classList.remove('drag-over');
+  if(tPidx!==dragSrc.pidx || tHidx===dragSrc.hidx) return;
+  // Reorder habits array
+  const habits=Y().periods[tPidx].habits;
+  const moved=habits.splice(dragSrc.hidx,1)[0];
+  habits.splice(tHidx,0,moved);
+  save();renderGrid();
+}
+
 // Expose all functions called from HTML to global scope
 window.toggleSidebar=toggleSidebar;
 window.toggleYearDD=toggleYearDD;
@@ -1557,6 +1623,11 @@ window.openHIE=openHIE;
 window.updateSlot=updateSlot;
 window.updateMemo=updateMemo;
 window.autoResizeTA=autoResizeTA;
+window.onDragStart=onDragStart;
+window.onDragOver=onDragOver;
+window.onDragLeave=onDragLeave;
+window.onDragEnd=onDragEnd;
+window.onDrop=onDrop;
 window.closeHIE=closeHIE;
 window.setSugSlot=setSugSlot;
 window.saveHIE=saveHIE;
