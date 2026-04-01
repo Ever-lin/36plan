@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>36周期年度计划</title>
 <style>
 /* Self-contained fonts - no external dependencies */
@@ -156,7 +156,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .dh-cs{width:12px;flex-shrink:0}
 .dh-ns{width:150px;min-width:150px;flex-shrink:0}
 .day-nums{display:flex;gap:3px;flex-shrink:0}
-.dnc{width:26px;text-align:center;font-size:9px;font-family:var(--mono);color:var(--t3);flex-shrink:0;line-height:1.3}
+.dnc{width:36px;text-align:center;font-size:9px;font-family:var(--mono);color:var(--t3);flex-shrink:0;line-height:1.3}
 .dnc.tod{color:var(--red);font-weight:700}
 .dnc.wkd{opacity:.6}
 .dh-ts{min-width:60px;flex-shrink:0;font-size:9px;color:var(--t3);font-family:var(--mono);text-align:center}
@@ -316,6 +316,148 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   border-radius:8px;padding:9px 16px;font-size:11px;box-shadow:0 8px 32px rgba(0,0,0,.4);
   transform:translateY(70px);opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);pointer-events:none;font-family:var(--mono)}
 .toast.show{transform:translateY(0);opacity:1}
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;
+  background:rgba(19,22,31,.97);backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);z-index:250;
+  padding:4px 0 8px;}
+.mn-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;cursor:pointer;padding:6px 4px;
+  color:var(--t3);font-size:9px;font-family:var(--mono);transition:color .15s;
+  -webkit-tap-highlight-color:transparent;}
+.mn-btn.active{color:var(--accent)}
+.mn-icon{font-size:20px;line-height:1}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE - TABLET & MOBILE
+══════════════════════════════════════════ */
+@media (max-width:1024px){
+  .sidebar{width:220px}
+  .period-todo-col{width:180px}
+  .hn-wrap{width:120px;min-width:120px}
+  .dh-ns{width:120px;min-width:120px}
+  .dc{width:30px;height:26px}
+  .dnc{width:30px}
+}
+@media (max-width:768px){
+  .app{height:auto;min-height:100vh}
+  .main{flex-direction:column;overflow:visible;height:auto}
+  .sidebar{
+    position:fixed;bottom:0;left:0;right:0;width:100%!important;
+    height:72vh;z-index:300;
+    border-right:none;border-top:1px solid var(--border);
+    border-radius:16px 16px 0 0;
+    transform:translateY(100%);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);
+    flex-direction:column;overflow:hidden;
+  }
+  .sidebar.mobile-open{transform:translateY(0)!important}
+  .sidebar.collapsed{transform:translateY(100%)!important;width:100%!important}
+  .sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299}
+  .sb-backdrop.show{display:block}
+  .sb-drag-handle{display:flex;justify-content:center;padding:8px 0 4px;cursor:grab;flex-shrink:0}
+  .sb-drag-bar{width:36px;height:4px;background:var(--border);border-radius:99px}
+  .header{padding:0 10px;gap:7px;height:48px}
+  .header-actions .btn-ghost{display:none}
+  .header-actions .btn-primary{display:flex}
+  .header-actions{gap:5px}
+  .btn{padding:5px 9px;font-size:11px}
+  .main-area{overflow:visible;height:auto}
+  .content-area{overflow:visible;padding:10px 10px 80px}
+  .tab-bar{display:none}
+  .mobile-nav{display:flex!important}
+  .period-body{flex-direction:column;gap:8px;padding:8px 10px}
+  .period-habits-col{overflow-x:auto;width:100%}
+  .period-todo-col{
+    width:100%!important;border-left:none;
+    border-top:1px solid var(--border);
+    padding-left:0;padding-top:10px;
+  }
+  .hn-wrap{width:100px;min-width:80px}
+  .dh-ns{width:100px;min-width:80px}
+  .dc{width:28px;height:26px}
+  .dc-inp{font-size:9px}
+  .dnc{width:28px;font-size:8px}
+  .period-hd{flex-wrap:wrap;gap:5px;padding:8px 10px}
+  .p-dates{font-size:9px}
+  .filter-bar{gap:5px}
+  .search-box{width:100%;margin-left:0;margin-top:4px}
+  .stats-grid{grid-template-columns:1fr}
+  .cal-hm{grid-template-columns:repeat(2,1fr)!important}
+  .cal-popup{
+    position:fixed!important;bottom:0!important;top:auto!important;
+    left:0!important;right:0!important;
+    max-width:100%!important;min-width:unset!important;
+    border-radius:16px 16px 0 0;
+  }
+  .hm-outer{-webkit-overflow-scrolling:touch}
+  .ps-day-tabs{-webkit-overflow-scrolling:touch}
+  .year-dropdown{min-width:80px}
+}
+@media (max-width:375px){
+  .dc{width:24px;height:24px}
+  .dnc{width:24px}
+  .hn-wrap{width:80px;min-width:70px}
+  .dh-ns{width:80px;min-width:70px}
+  .content-area{padding:8px 8px 80px}
+}
+@media (min-width:769px){
+  .mobile-nav{display:none!important}
+  .sb-backdrop{display:none!important}
+  .sb-drag-handle{display:none!important}
+}
+
+
+/* ── Habit time-slot tag ── */
+/* ── Habit time slot inline ── */
+.h-slot-inp{
+  background:transparent;border:none;outline:none;
+  font-size:10px;color:var(--yellow);font-family:var(--mono);
+  width:72px;border-bottom:1px dashed transparent;
+  transition:border-color .15s;padding:1px 2px;flex-shrink:0;
+}
+.h-slot-inp:focus{border-bottom-color:var(--yellow)}
+.h-slot-inp::placeholder{color:var(--t3);font-size:9px}
+.h-slot-wrap{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.h-slot-icon{font-size:10px;color:var(--t3);flex-shrink:0}
+.h-memo-btn{width:20px;height:20px;border-radius:4px;background:transparent;border:1px solid transparent;
+  cursor:pointer;font-size:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;color:var(--t3);padding:0}
+.h-memo-btn:hover{border-color:var(--accent);background:var(--aglow)}
+.h-memo-btn.has-memo{color:var(--accent);border-color:rgba(91,143,255,.4)}
+
+.h-memo-inp::placeholder{color:var(--t3);font-size:9px;font-style:italic}
+.h-memo-icon{font-size:9px;color:var(--t3);flex-shrink:0;padding-top:2px}
+/* Inline slot/memo editor */
+.h-inline-edit{
+  position:absolute;z-index:400;
+  background:var(--s2);border:1px solid var(--b2);border-radius:10px;
+  padding:12px;width:240px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:none;
+}
+.h-inline-edit.open{display:block}
+.hie-title{font-size:10px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.hie-close{background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;line-height:1}
+.hie-close:hover{color:var(--text)}
+.hie-label{font-size:10px;color:var(--t2);margin-bottom:4px;margin-top:8px}
+.hie-inp{width:100%;background:var(--s3);border:1px solid var(--border);border-radius:6px;
+  padding:6px 8px;color:var(--text);font-size:11px;font-family:var(--sans);outline:none}
+.hie-inp:focus{border-color:var(--accent)}
+.hie-suggestions{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.hie-sug{padding:2px 8px;border-radius:99px;border:1px solid var(--border);background:transparent;
+  color:var(--t3);font-size:10px;cursor:pointer;transition:all .15s;font-family:var(--mono)}
+.hie-sug:hover{border-color:var(--yellow);color:var(--yellow)}
+.hie-ta{width:100%;background:var(--s3);border:1px solid var(--border);border-radius:6px;
+  padding:6px 8px;color:var(--text);font-size:11px;font-family:var(--sans);outline:none;
+  resize:vertical;min-height:60px;line-height:1.5}
+.hie-ta:focus{border-color:var(--accent)}
+.hie-save-row{display:flex;justify-content:flex-end;margin-top:8px}
+
+
+
+
+/* Day header spacers - must match habit row column widths exactly */
+.dh-slot-spc{width:84px;flex-shrink:0} /* matches h-slot-wrap: 10px icon + 2px gap + 72px input */
+.dh-memo-spc{width:20px;flex-shrink:0} /* matches h-memo-btn */
 </style>
 </head>
 <body>
@@ -343,7 +485,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 
 <div class="main">
   <!-- SIDEBAR -->
-  <aside class="sidebar" id="sidebar">
+  <div class="sb-backdrop" id="sbBackdrop" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+<div class="sb-drag-handle"><div class="sb-drag-bar"></div></div>
     <div class="sb-head">
       <span>数据总览</span>
       <span id="sbYear" style="color:var(--accent);font-weight:700"></span>
@@ -510,7 +654,7 @@ function genPeriods(year){
     const d2=new Date(d1); d2.setDate(d2.getDate()+9);
     const days10=Array.from({length:10},(_,d)=>{const dt=new Date(d1);dt.setDate(dt.getDate()+d);return localISOFull(dt);});
     out.push({label:i<36?`${i+1}-36`:'End',start:localISOFull(d1),end:localISOFull(d2),days10,
-      habits:Array.from({length:INIT_HABITS},()=>({name:'',cat:'other',days:Array(10).fill(false),mins:Array(10).fill(0)})),
+      habits:Array.from({length:INIT_HABITS},()=>({name:'',cat:'other',days:Array(10).fill(false),mins:Array(10).fill(0),timeSlot:'',memo:''})),
       notes:{day:{},period:''}
     });
   }
@@ -528,6 +672,8 @@ function ensureYear(y){
       if(!p.todos) p.todos=[];
       p.habits.forEach(h=>{
         if(!h.mins) h.mins=Array(10).fill(0);
+        if(h.timeSlot===undefined) h.timeSlot='';
+        if(h.memo===undefined) h.memo='';
         while(h.days.length<10) h.days.push(false);
         while(h.mins.length<10) h.mins.push(0);
       });
@@ -569,7 +715,20 @@ document.addEventListener('click',e=>{if(!document.getElementById('yearSel').con
 
 // ═══════════════════════════ SIDEBAR ═══════════════════════════
 let sidebarOpen=true;
-function toggleSidebar(){sidebarOpen=!sidebarOpen;document.getElementById('sidebar').classList.toggle('collapsed',!sidebarOpen);}
+function isMobile(){return window.innerWidth<=768;}
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const bd=document.getElementById('sbBackdrop');
+  if(isMobile()){
+    const isOpen=sb.classList.contains('mobile-open');
+    sb.classList.toggle('mobile-open',!isOpen);
+    bd&&bd.classList.toggle('show',!isOpen);
+    sidebarOpen=!isOpen;
+  } else {
+    sidebarOpen=!sidebarOpen;
+    sb.classList.toggle('collapsed',!sidebarOpen);
+  }
+}
 
 function renderSidebar(){
   document.getElementById('sbYear').textContent=currentYear;
@@ -638,7 +797,7 @@ function addCat(){
 function deleteCat(id){
   const idx=cats().findIndex(c=>c.id===id);
   if(idx<0)return;
-  if(['work','life','study','other'].includes(id)){showToast('默认分类无法删除');return;}
+  if(['work','life','study'].includes(id)){showToast('工作/生活/学习为必要分类，无法删除');return;}
   // re-assign habits
   Y().periods.forEach(p=>p.habits.forEach(h=>{if(h.cat===id)h.cat='other';}));
   Y().categories.splice(idx,1);
@@ -688,14 +847,21 @@ function renderGrid(){
             onclick="event.stopPropagation()">
         </div>`;
       });
+      const hasMemo=!!(h.memo&&h.memo.trim());
       hH+=`<div class="hr">
         <button class="cat-dot" style="background:${cc}" onclick="openCatMenu(event,${pidx},${hidx})" title="${cat.name}"></button>
         <div class="hn-wrap"><input class="hn-inp" value="${esc(h.name)}" placeholder="输入习惯名称…" onchange="updateName(${pidx},${hidx},this.value)"></div>
+        <div class="h-slot-wrap">
+          <span class="h-slot-icon">⏰</span>
+          <input class="h-slot-inp" value="${esc(h.timeSlot||'')}" placeholder="时间…"
+            onchange="updateSlot(${pidx},${hidx},this.value)"
+            title="时间安排：如 08:00、饭后、睡前、周末">
+        </div>
+        <button class="h-memo-btn${hasMemo?' has-memo':''}" onclick="openHIE(event,${pidx},${hidx})" title="${hasMemo?esc((h.memo||'').slice(0,30)):'添加备注'}">📌</button>
         <div class="days-row">${dH}</div>
-
-        <div class="hp" style="min-width:60px;text-align:right">
-          ${h.name?`<span style="color:var(--accent)">${done}/10</span>`:''}
-          ${totalM?`<span style="color:var(--green);margin-left:3px">${mDisp(totalM)}</span>`:''}
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:70px;flex-shrink:0">
+          <span style="font-size:10px;color:var(--accent);font-family:var(--mono);font-weight:700;white-space:nowrap">${done}/10</span>
+          ${totalM?`<span style="font-size:10px;color:var(--green);font-family:var(--mono);white-space:nowrap">${mDisp(totalM)}</span>`:''}
         </div>
         <button class="del-btn" onclick="deleteHabit(${pidx},${hidx})" title="删除">×</button>
       </div>`;
@@ -717,9 +883,11 @@ function renderGrid(){
       <div class="period-body">
         <div class="period-habits-col">
           <div class="dh-row">
-            <div class="dh-cs"></div><div class="dh-ns"></div>
+            <div class="dh-cs"></div>
+            <div class="dh-ns"></div>
+            <div class="dh-slot-spc"></div>
+            <div class="dh-memo-spc"></div>
             <div class="day-nums">${dnH}</div>
-            <div class="dh-ps"></div><div class="dh-ds"></div>
           </div>
           ${hH}
           <div class="add-row"><button class="add-btn" onclick="addHabit(${pidx})">＋ 添加习惯行</button></div>
@@ -744,6 +912,7 @@ function ensureTodos(pidx){
 function buildTodoHTML(pidx){
   const todos=ensureTodos(pidx);
   const doneCount=todos.filter(t=>t.done).length;
+  let memosHTML=''; // removed habit memo summary per user request
   let itemsHTML=todos.map((t,ti)=>`
     <div class="todo-item">
       <div class="todo-cb${t.done?' done':''}" onclick="toggleTodo(${pidx},${ti})"></div>
@@ -753,7 +922,7 @@ function buildTodoHTML(pidx){
         >${esc(t.text)}</textarea>
       <button class="todo-del" onclick="deleteTodo(${pidx},${ti})">×</button>
     </div>`).join('');
-  return `<div class="todo-head">
+  return `${memosHTML}<div class="todo-head">
     <div class="todo-title">📋 本期清单 ${doneCount?doneCount+'/'+todos.length:''}</div>
     <button class="todo-add-btn" onclick="addTodo(${pidx})" title="添加">＋</button>
   </div>
@@ -1150,12 +1319,18 @@ function updateDayTime(pidx,hidx,di,val){
   mins=Math.max(0,Math.min(1440,mins));
   const h=Y().periods[pidx].habits[hidx];
   h.mins[di]=mins;
-  // Auto-mark as done if time > 0
-  if(mins>0) h.days[di]=true;
+  // days[di] mirrors whether time>0: input time=done, clear time=undone
+  h.days[di]=(mins>0);
   save();renderAll();
 }
 function updateName(pidx,hidx,val){Y().periods[pidx].habits[hidx].name=val.trim();save();renderSidebar();}
-function addHabit(pidx){Y().periods[pidx].habits.push({name:'',cat:'other',days:Array(10).fill(false),mins:Array(10).fill(0)});save();renderGrid();}
+function updateSlot(pidx,hidx,val){Y().periods[pidx].habits[hidx].timeSlot=val.trim();save();}
+function updateMemo(pidx,hidx,val){Y().periods[pidx].habits[hidx].memo=val;save();
+  // refresh todo col to update memo summary
+  refreshTodoCol(pidx);
+}
+function autoResizeTA(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
+function addHabit(pidx){Y().periods[pidx].habits.push({name:'',cat:'other',days:Array(10).fill(false),mins:Array(10).fill(0),timeSlot:'',memo:''});save();renderGrid();}
 function deleteHabit(pidx,hidx){if(Y().periods[pidx].habits.length<=1){showToast('至少保留一行');return;}Y().periods[pidx].habits.splice(hidx,1);save();renderAll();}
 
 function openCatMenu(e,pidx,hidx){
@@ -1199,13 +1374,30 @@ function applyTime(){
 }
 
 // ═══════════════════════════ TABS ═══════════════════════════
+function mobileTab(name,btn){
+  // Switch tab and update bottom nav active state
+  const tabMap={grid:0,heatmap:1,stats:2,journal:3};
+  const fakeTabEls=document.querySelectorAll('.tab');
+  if(fakeTabEls[tabMap[name]]) switchTab(name,fakeTabEls[tabMap[name]]);
+  document.querySelectorAll('.mn-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
 function switchTab(name,el){
   ['grid','heatmap','stats','journal'].forEach(t=>{document.getElementById('tab-'+t).style.display=t===name?'':'none';});
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
+  el&&el.classList.add('active');
+  // Close sidebar on mobile after tab switch
+  if(isMobile()){
+    const sb=document.getElementById('sidebar');
+    const bd=document.getElementById('sbBackdrop');
+    sb.classList.remove('mobile-open');
+    bd&&bd.classList.remove('show');
+    sidebarOpen=false;
+  }
   if(name==='heatmap')renderHeatmap();
   if(name==='stats')renderStats();
   if(name==='journal')renderJournal();
+
 }
 function setFilter(mode,btn){
   filterMode=mode;document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');renderGrid();
@@ -1293,6 +1485,46 @@ function showCalPopup(e,dateKey){
 function closeCalPopup(){document.getElementById('calPopup').classList.remove('open');}
 document.addEventListener('click',()=>closeCalPopup());
 
+
+// ═══════════════════════════ HABIT INLINE EDITOR ═══════════════════════════
+let hieTarget=null;
+function openHIE(e,pidx,hidx){
+  e.stopPropagation();
+  hieTarget={pidx,hidx};
+  const h=Y().periods[pidx].habits[hidx];
+  document.getElementById('hieTitle').textContent=(h.name||'习惯')+' 设置';
+  document.getElementById('hieSlotInp').value=h.timeSlot||'';
+  document.getElementById('hieMemoTa').value=h.memo||'';
+  const ed=document.getElementById('hInlineEdit');
+  let left=e.clientX+8, top=e.clientY+8;
+  if(left+250>window.innerWidth) left=e.clientX-258;
+  if(top+300>window.innerHeight) top=e.clientY-310;
+  ed.style.left=left+'px'; ed.style.top=top+'px';
+  ed.classList.add('open');
+  setTimeout(()=>document.getElementById('hieSlotInp').focus(),50);
+}
+function closeHIE(){
+  document.getElementById('hInlineEdit').classList.remove('open');
+  hieTarget=null;
+}
+function setSugSlot(val){
+  document.getElementById('hieSlotInp').value=val;
+  document.getElementById('hieSlotInp').focus();
+}
+function saveHIE(){
+  if(!hieTarget)return;
+  const h=Y().periods[hieTarget.pidx].habits[hieTarget.hidx];
+  h.timeSlot=document.getElementById('hieSlotInp').value.trim();
+  h.memo=document.getElementById('hieMemoTa').value;
+  save(); renderGrid(); closeHIE();
+}
+document.addEventListener('click',e=>{
+  const ed=document.getElementById('hInlineEdit');
+  if(ed&&ed.classList.contains('open')&&!ed.contains(e.target)) closeHIE();
+});
+
+
+
 // Expose all functions called from HTML to global scope
 window.toggleSidebar=toggleSidebar;
 window.toggleYearDD=toggleYearDD;
@@ -1321,10 +1553,18 @@ window.saveNote=saveNote;
 window.saveYearNote=saveYearNote;
 window.addCat=addCat;
 window.deleteCat=deleteCat;
+window.openHIE=openHIE;
+window.updateSlot=updateSlot;
+window.updateMemo=updateMemo;
+window.autoResizeTA=autoResizeTA;
+window.closeHIE=closeHIE;
+window.setSugSlot=setSugSlot;
+window.saveHIE=saveHIE;
 window.selectColor=selectColor;
 window.showCalPopup=showCalPopup;
 window.closeCalPopup=closeCalPopup;
 window.updateDayTime=updateDayTime;
+window.mobileTab=mobileTab;
 window.addTodo=addTodo;
 window.addTodoFromInp=addTodoFromInp;
 window.toggleTodo=toggleTodo;
@@ -1332,6 +1572,53 @@ window.updateTodo=updateTodo;
 window.deleteTodo=deleteTodo;
 
 </script>
+
+<nav class="mobile-nav" id="mobileNav">
+  <button class="mn-btn active" id="mnGrid" onclick="mobileTab('grid',this)">
+    <span class="mn-icon">📋</span>总览
+  </button>
+  <button class="mn-btn" id="mnHeatmap" onclick="mobileTab('heatmap',this)">
+    <span class="mn-icon">🔥</span>热力图
+  </button>
+  <button class="mn-btn" id="mnStats" onclick="mobileTab('stats',this)">
+    <span class="mn-icon">📈</span>统计
+  </button>
+  <button class="mn-btn" id="mnJournal" onclick="mobileTab('journal',this)">
+    <span class="mn-icon">📝</span>日志
+  </button>
+  <button class="mn-btn" id="mnSidebar" onclick="toggleSidebar()">
+    <span class="mn-icon">☰</span>菜单
+  </button>
+</nav>
+
+
+<div class="h-inline-edit" id="hInlineEdit">
+  <div class="hie-title">
+    <span id="hieTitle">习惯设置</span>
+    <button class="hie-close" onclick="closeHIE()">×</button>
+  </div>
+  <div id="hieSlotSection">
+    <div class="hie-label">⏰ 时间安排</div>
+    <input class="hie-inp" id="hieSlotInp" placeholder="如：08:00、饭后、睡前、周末…" maxlength="20">
+    <div class="hie-suggestions">
+      <span class="hie-sug" onclick="setSugSlot('早起 07:00')">早起 07:00</span>
+      <span class="hie-sug" onclick="setSugSlot('早饭后')">早饭后</span>
+      <span class="hie-sug" onclick="setSugSlot('午休')">午休</span>
+      <span class="hie-sug" onclick="setSugSlot('晚饭后')">晚饭后</span>
+      <span class="hie-sug" onclick="setSugSlot('睡前 22:00')">睡前 22:00</span>
+      <span class="hie-sug" onclick="setSugSlot('周末')">周末</span>
+      <span class="hie-sug" onclick="setSugSlot('随时')">随时</span>
+    </div>
+  </div>
+  <div id="hieMemoSection">
+    <div class="hie-label">📌 备注 / 这10天的计划</div>
+    <textarea class="hie-ta" id="hieMemoTa" placeholder="写这个习惯的10天计划、目标、备注…"></textarea>
+  </div>
+  <div class="hie-save-row">
+    <button class="btn btn-primary" style="font-size:11px;padding:5px 14px" onclick="saveHIE()">保存</button>
+  </div>
+</div>
+
 <div class="cal-popup" id="calPopup"><div class="cal-popup-title"><span id="calPopupTitle"></span><button class="cal-popup-close" onclick="closeCalPopup()">×</button></div><div id="calPopupBody"></div></div>
 </body>
 </html>
