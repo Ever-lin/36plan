@@ -419,11 +419,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .h-slot-inp::placeholder{color:var(--t3);font-size:9px}
 .h-slot-wrap{display:flex;align-items:center;gap:2px;flex-shrink:0}
 .h-slot-icon{font-size:10px;color:var(--t3);flex-shrink:0}
-.h-memo-btn{width:20px;height:20px;border-radius:4px;background:transparent;border:1px solid transparent;
-  cursor:pointer;font-size:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  transition:all .15s;color:var(--t3);padding:0}
-.h-memo-btn:hover{border-color:var(--accent);background:var(--aglow)}
-.h-memo-btn.has-memo{color:var(--accent);border-color:rgba(91,143,255,.4)}
+
 
 .h-memo-inp::placeholder{color:var(--t3);font-size:9px;font-style:italic}
 .h-memo-icon{font-size:9px;color:var(--t3);flex-shrink:0;padding-top:2px}
@@ -457,7 +453,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 
 /* Day header spacers - must match habit row column widths exactly */
 .dh-slot-spc{width:84px;flex-shrink:0} /* matches h-slot-wrap: 10px icon + 2px gap + 72px input */
-.dh-memo-spc{width:20px;flex-shrink:0} /* matches h-memo-btn */
 
 /* ── Drag & Drop ── */
 .drag-handle{
@@ -471,6 +466,21 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   transition:opacity .15s,transform .15s;border-radius:6px;}
 .hr.dragging{opacity:.35;transform:scale(.98)}
 .hr.drag-over{background:rgba(91,143,255,.08);outline:1.5px dashed var(--accent);outline-offset:2px}
+
+/* ── Inline memo input (after day cells) ── */
+.h-inline-memo{display:flex;align-items:center;gap:3px;flex:1;min-width:80px}
+.h-inline-memo-icon{font-size:11px;flex-shrink:0;color:var(--t3)}
+.h-inline-memo-inp{
+  flex:1;background:transparent;border:none;outline:none;
+  border-bottom:1px solid var(--border);
+  font-size:11px;color:var(--text);font-family:var(--sans);
+  padding:1px 2px;transition:border-color .18s;
+  min-width:60px;
+}
+.h-inline-memo-inp:focus{border-bottom-color:var(--accent)}
+.h-inline-memo-inp::placeholder{color:var(--t3);font-style:italic;font-size:10px}
+/* Header drag spacer */
+.dh-drag-spc{width:22px;flex-shrink:0} /* matches drag-handle width */
 </style>
 </head>
 <body>
@@ -860,7 +870,6 @@ function renderGrid(){
             onclick="event.stopPropagation()">
         </div>`;
       });
-      const hasMemo=!!(h.memo&&h.memo.trim());
       hH+=`<div class="hr" draggable="true"
         data-pidx="${pidx}" data-hidx="${hidx}"
         ondragstart="onDragStart(event)"
@@ -877,11 +886,16 @@ function renderGrid(){
             onchange="updateSlot(${pidx},${hidx},this.value)"
             title="时间安排：如 08:00、饭后、睡前、周末">
         </div>
-        <button class="h-memo-btn${hasMemo?' has-memo':''}" onclick="openHIE(event,${pidx},${hidx})" title="${hasMemo?esc((h.memo||'').slice(0,30)):'添加备注'}">📌</button>
         <div class="days-row">${dH}</div>
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:70px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:5px;min-width:70px;flex-shrink:0">
           <span style="font-size:10px;color:var(--accent);font-family:var(--mono);font-weight:700;white-space:nowrap">${done}/10</span>
           ${totalM?`<span style="font-size:10px;color:var(--green);font-family:var(--mono);white-space:nowrap">${mDisp(totalM)}</span>`:''}
+        </div>
+        <div class="h-inline-memo">
+          <span class="h-inline-memo-icon">📌</span>
+          <input class="h-inline-memo-inp" value="${esc(h.memo||'')}" placeholder="备注…"
+            onchange="updateMemo(${pidx},${hidx},this.value)"
+            title="备注 / 10天计划">
         </div>
         <button class="del-btn" onclick="deleteHabit(${pidx},${hidx})" title="删除">×</button>
       </div>`;
@@ -903,10 +917,10 @@ function renderGrid(){
       <div class="period-body">
         <div class="period-habits-col">
           <div class="dh-row">
+            <div class="dh-drag-spc"></div>
             <div class="dh-cs"></div>
             <div class="dh-ns"></div>
             <div class="dh-slot-spc"></div>
-            <div class="dh-memo-spc"></div>
             <div class="day-nums">${dnH}</div>
           </div>
           ${hH}
@@ -1345,10 +1359,7 @@ function updateDayTime(pidx,hidx,di,val){
 }
 function updateName(pidx,hidx,val){Y().periods[pidx].habits[hidx].name=val.trim();save();renderSidebar();}
 function updateSlot(pidx,hidx,val){Y().periods[pidx].habits[hidx].timeSlot=val.trim();save();}
-function updateMemo(pidx,hidx,val){Y().periods[pidx].habits[hidx].memo=val;save();
-  // refresh todo col to update memo summary
-  refreshTodoCol(pidx);
-}
+function updateMemo(pidx,hidx,val){Y().periods[pidx].habits[hidx].memo=val;save();}
 function autoResizeTA(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
 function addHabit(pidx){Y().periods[pidx].habits.push({name:'',cat:'other',days:Array(10).fill(false),mins:Array(10).fill(0),timeSlot:'',memo:''});save();renderGrid();}
 function deleteHabit(pidx,hidx){if(Y().periods[pidx].habits.length<=1){showToast('至少保留一行');return;}Y().periods[pidx].habits.splice(hidx,1);save();renderAll();}
