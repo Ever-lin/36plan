@@ -210,8 +210,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .ps-day-tab.has-note{border-color:rgba(52,211,153,.4);color:var(--green)}
 .ps-day-tab.has-note.active{background:var(--green);border-color:var(--green);color:#092211}
 .ps-textarea{width:100%;background:var(--s3);border:1px solid var(--border);border-radius:6px;
-  padding:8px 10px;color:var(--text);font-size:11px;font-family:var(--sans);outline:none;resize:vertical;
-  min-height:60px;max-height:140px;line-height:1.6}
+  padding:10px 12px;color:var(--text);font-size:12px;font-family:var(--sans);outline:none;resize:vertical;
+  min-height:100px;line-height:1.8}
 .ps-textarea:focus{border-color:var(--accent)}
 .ps-save-row{display:flex;justify-content:flex-end;margin-top:5px;gap:6px;align-items:center}
 .ps-saved-hint{font-size:10px;color:var(--green);font-family:var(--mono);opacity:0;transition:opacity .3s}
@@ -293,10 +293,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .habit-time-table tr:hover td{background:var(--s2)}
 /* Journal */
 .journal-area{display:flex;flex-direction:column;gap:12px}
-.journal-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px}
-.ji-date{font-size:10px;color:var(--t3);font-family:var(--mono);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
-.ji-content{font-size:12px;color:var(--text2);line-height:1.7;white-space:pre-wrap}
+.journal-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.ji-date{font-size:10px;color:var(--t3);font-family:var(--mono);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.ji-content{font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;word-break:break-word}
 .ji-empty{color:var(--t3);font-style:italic}
+.ji-sort-btn{padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;border:1px solid var(--border);
+  background:transparent;color:var(--t2);cursor:pointer;font-family:var(--mono);transition:all .18s}
+.ji-sort-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ji-sort-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 /* ──────── MODALS ──────── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;align-items:center;justify-content:center}
 .overlay.open{display:flex}
@@ -590,6 +594,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
         <button class="fchip" onclick="setJournalFilter('daily',this)">每日总结</button>
         <button class="fchip" onclick="setJournalFilter('period',this)">10天总结</button>
         <button class="fchip" onclick="setJournalFilter('year',this)">年度总结</button>
+        <div style="margin-left:auto;display:flex;gap:5px">
+          <button class="ji-sort-btn active" id="sortAscBtn" onclick="setJournalSort('asc',this)">⬆ 正序</button>
+          <button class="ji-sort-btn" id="sortDescBtn" onclick="setJournalSort('desc',this)">⬇ 倒序</button>
+        </div>
       </div>
       <div class="journal-area" id="journalArea"></div>
     </div>
@@ -662,6 +670,7 @@ let currentYear=2026;
 let filterMode='all';
 let hmMode='bar';
 let journalFilter='all';
+let journalSort='asc';
 let catTarget=null;
 let timeTarget=null;
 let selectedColor=PRESET_COLORS[0];
@@ -1025,7 +1034,7 @@ function buildPeriodNotes(pidx,p){
       <div class="ps-period-time">${pMins?'本周期: '+mDisp(pMins):''}</div>
     </div>
     <div class="ps-day-tabs" id="pst-${pidx}">${dayTabsHTML}</div>
-    <textarea class="ps-textarea" id="psNote-${pidx}" placeholder="在这里写${label}…" onchange="saveNote(${pidx})">${esc(curNote)}</textarea>
+    <textarea class="ps-textarea" id="psNote-${pidx}" placeholder="在这里写${label}…" oninput="autoResizeTA(this)" onchange="saveNote(${pidx})">${esc(curNote)}</textarea>
     <div class="ps-save-row">
       <span class="ps-saved-hint" id="psHint-${pidx}">✓ 已保存</span>
       <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="saveNote(${pidx})">保存</button>
@@ -1049,7 +1058,7 @@ function setPsTab(pidx,di){
   const notes=p.notes||{day:{},period:''};
   const curNote=di==='period'?(notes.period||''):(notes.day&&notes.day[di]||'');
   const ta=document.getElementById('psNote-'+pidx);
-  if(ta) ta.value=curNote;
+  if(ta){ta.value=curNote;autoResizeTA(ta);}
 }
 function saveNote(pidx){
   const p=Y().periods[pidx];
@@ -1276,16 +1285,11 @@ function renderStats(){
 function renderJournal(){
   const area=document.getElementById('journalArea');area.innerHTML='';
   const entries=[];
-  // Year note
-  if(journalFilter==='all'||journalFilter==='year'){
-    const yn=Y().yearNote||'';
-    entries.push({type:'year',label:`${currentYear} 年度总结`,content:yn,key:'year'});
-  }
   // Period notes + day notes
   Y().periods.forEach((p,pidx)=>{
     if(journalFilter==='all'||journalFilter==='period'){
       if(p.notes&&p.notes.period){
-        entries.push({type:'period',label:`📅 ${p.label} · ${dLabel(p.start)}–${dLabel(p.end)} 10天总结`,content:p.notes.period,pidx});
+        entries.push({type:'period',label:`📅 ${p.label} · ${dLabel(p.start)}–${dLabel(p.end)} 10天总结`,content:p.notes.period,pidx,sortKey:p.start+'-period'});
       }
     }
     if(journalFilter==='all'||journalFilter==='daily'){
@@ -1293,29 +1297,44 @@ function renderJournal(){
         Object.entries(p.notes.day).forEach(([di,note])=>{
           if(!note)return;
           const diso=p.days10[di];
-          const _wd=['周日','周一','周二','周三','周四','周五','周六'];entries.push({type:'daily',label:`📝 ${dLabel(diso)} (${_wd[toD(diso).getDay()]})`,content:note,pidx,di});
+          const _wd=['周日','周一','周二','周三','周四','周五','周六'];
+          entries.push({type:'daily',label:`📝 ${dLabel(diso)} (${_wd[toD(diso).getDay()]})`,content:note,pidx,di,sortKey:diso+'-daily'});
         });
       }
     }
   });
-  if(!entries.length){
-    area.innerHTML='<div style="color:var(--t3);font-size:12px;padding:24px;text-align:center">暂无记录。在计划总览的每个周期底部写每日或10天总结后会显示在这里。</div>';
-    return;
-  }
-  // Year note editor
+  // Sort
+  entries.sort((a,b)=>journalSort==='asc'?a.sortKey.localeCompare(b.sortKey):b.sortKey.localeCompare(a.sortKey));
+
+  // Year note editor (always at top if filter includes year)
   if(journalFilter==='all'||journalFilter==='year'){
     const ycard=document.createElement('div');ycard.className='journal-item';
     const yn=Y().yearNote||'';
     ycard.innerHTML=`<div class="ji-date"><span style="color:var(--accent);font-weight:700">🏆 ${currentYear} 年度总结</span></div>
-      <textarea class="ps-textarea" id="yearNoteTA" placeholder="写下这一年的总结…" style="margin-top:8px" onchange="saveYearNote()">${esc(yn)}</textarea>
+      <textarea class="ps-textarea" id="yearNoteTA" placeholder="写下这一年的总结…" style="margin-top:8px;min-height:120px" oninput="autoResizeTA(this)" onchange="saveYearNote()">${esc(yn)}</textarea>
       <div class="ps-save-row"><span class="ps-saved-hint" id="ynHint">✓ 已保存</span><button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="saveYearNote()">保存</button></div>`;
     area.appendChild(ycard);
+    // auto-resize after render
+    setTimeout(()=>{const ta=document.getElementById('yearNoteTA');if(ta)autoResizeTA(ta);},50);
   }
-  // Other entries
-  entries.filter(e=>e.type!=='year').forEach(e=>{
+
+  if(!entries.length && journalFilter!=='year'){
+    const empty=document.createElement('div');
+    empty.style.cssText='color:var(--t3);font-size:12px;padding:24px;text-align:center';
+    empty.textContent='暂无记录。在计划总览的每个周期底部写每日或10天总结后会显示在这里。';
+    area.appendChild(empty);
+    return;
+  }
+
+  entries.forEach(e=>{
     const card=document.createElement('div');card.className='journal-item';
-    card.innerHTML=`<div class="ji-date"><span>${e.label}</span><span style="color:var(--t3)">${e.type==='period'?'10天':'每日'}</span></div>
-      <div class="ji-content">${e.content?esc(e.content):'<span class="ji-empty">无内容</span>'}</div>`;
+    const typeLabel=e.type==='period'?'10天总结':'每日记录';
+    const typeColor=e.type==='period'?'var(--purple)':'var(--cyan)';
+    card.innerHTML=`<div class="ji-date">
+      <span style="font-size:11px;color:var(--text);font-weight:600">${e.label}</span>
+      <span style="color:${typeColor};font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid ${typeColor};opacity:.8">${typeLabel}</span>
+    </div>
+    <div class="ji-content">${e.content?esc(e.content):'<span class="ji-empty">无内容</span>'}</div>`;
     area.appendChild(card);
   });
 }
@@ -1327,6 +1346,12 @@ function saveYearNote(){
 function setJournalFilter(mode,btn){
   journalFilter=mode;
   document.querySelectorAll('#tab-journal .fchip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderJournal();
+}
+function setJournalSort(order,btn){
+  journalSort=order;
+  document.querySelectorAll('.ji-sort-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderJournal();
 }
@@ -1611,6 +1636,7 @@ window.switchTab=switchTab;
 window.setFilter=setFilter;
 window.setHmMode=setHmMode;
 window.setJournalFilter=setJournalFilter;
+window.setJournalSort=setJournalSort;
 window.openImport=openImport;
 window.doImport=doImport;
 window.doExportJSON=doExportJSON;
