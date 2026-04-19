@@ -485,6 +485,60 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .h-inline-memo-inp::placeholder{color:var(--t3);font-style:italic;font-size:10px}
 /* Header drag spacer */
 .dh-drag-spc{width:22px;flex-shrink:0} /* matches drag-handle width */
+
+/* Copy to next period button */
+.btn-copy-next{
+  background:transparent;
+  border:1px solid rgba(91,143,255,.35);
+  border-radius:6px;
+  color:var(--accent);
+  cursor:pointer;
+  font-size:10px;
+  font-family:var(--mono);
+  font-weight:700;
+  padding:3px 9px;
+  transition:all .18s;
+  white-space:nowrap;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.btn-copy-next:hover{
+  background:var(--aglow);
+  border-color:var(--accent);
+  box-shadow:0 0 8px rgba(91,143,255,.2);
+}
+.btn-copy-next:disabled{
+  opacity:.35;
+  cursor:not-allowed;
+  border-color:var(--border);
+  color:var(--t3);
+}
+
+/* Copy modal */
+.copy-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:700;
+  display:none;align-items:center;justify-content:center;
+}
+.copy-modal-overlay.open{display:flex;}
+.copy-modal{
+  background:var(--s2);border:1px solid var(--b2);border-radius:12px;
+  padding:20px 24px;width:360px;max-width:94vw;
+  box-shadow:0 16px 48px rgba(0,0,0,.6);
+}
+.copy-modal-title{
+  font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;
+  display:flex;align-items:center;gap:8px;
+}
+.copy-modal-sub{font-size:11px;color:var(--t2);margin-bottom:16px;line-height:1.6;}
+.copy-opt-row{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;}
+.copy-opt{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s3);cursor:pointer;transition:all .15s;}
+.copy-opt:hover{border-color:var(--accent);background:var(--aglow);}
+.copy-opt input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;flex-shrink:0;}
+.copy-opt-label{font-size:12px;color:var(--text);}
+.copy-opt-desc{font-size:10px;color:var(--t3);margin-top:1px;}
+.copy-modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+.copy-warning{font-size:10px;color:var(--yellow);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:5px;padding:6px 10px;margin-bottom:14px;}
 </style>
 </head>
 <body>
@@ -589,15 +643,24 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 
     <!-- JOURNAL TAB -->
     <div id="tab-journal" class="content-area" style="display:none">
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
         <button class="fchip active" onclick="setJournalFilter('all',this)">全部</button>
         <button class="fchip" onclick="setJournalFilter('daily',this)">每日总结</button>
         <button class="fchip" onclick="setJournalFilter('period',this)">10天总结</button>
         <button class="fchip" onclick="setJournalFilter('year',this)">年度总结</button>
-        <div style="margin-left:auto;display:flex;gap:5px">
+        <div style="margin-left:auto;display:flex;gap:5px;align-items:center">
           <button class="ji-sort-btn active" id="sortAscBtn" onclick="setJournalSort('asc',this)">⬆ 正序</button>
           <button class="ji-sort-btn" id="sortDescBtn" onclick="setJournalSort('desc',this)">⬇ 倒序</button>
         </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="position:relative;flex:1;max-width:340px">
+          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--t3);pointer-events:none">🔍</span>
+          <input class="search-box" id="journalSearchBox" placeholder="搜索日志内容…"
+            style="width:100%;padding-left:28px"
+            oninput="renderJournal()">
+        </div>
+        <span id="journalSearchCount" style="font-size:10px;color:var(--t3);font-family:var(--mono);white-space:nowrap;display:none"></span>
       </div>
       <div class="journal-area" id="journalArea"></div>
     </div>
@@ -921,6 +984,7 @@ function renderGrid(){
         ${badge}
         <div style="flex:1"></div>
         <div style="font-size:10px;color:var(--green);font-family:var(--mono);margin-right:8px">${pMins?mDisp(pMins):''}</div>
+        <button class="btn-copy-next" onclick="event.stopPropagation();openCopyNext(${pidx})" title="复制习惯到下一个10天" ${pidx>=Y().periods.length-1?'disabled':''}>➡ 复制到下期</button>
         <div class="mp"><div class="mp-bar"><div class="mp-fill" style="width:${pct}%"></div></div><div class="mp-pct">${pct}%</div></div>
       </div>
       <div class="period-body">
@@ -1282,8 +1346,17 @@ function renderStats(){
 }
 
 // ═══════════════════════════ JOURNAL ═══════════════════════════
+function highlightKeyword(text, kw) {
+  if (!kw) return esc(text);
+  const escaped = esc(text);
+  const kwEsc = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escaped.replace(new RegExp(kwEsc.replace(/&amp;/g,'&amp;').replace(/</g,'&lt;'), 'gi'),
+    m => `<mark style="background:rgba(251,191,36,.35);color:var(--yellow);border-radius:2px;padding:0 1px">${m}</mark>`);
+}
+
 function renderJournal(){
   const area=document.getElementById('journalArea');area.innerHTML='';
+  const kw=(document.getElementById('journalSearchBox')?.value||'').trim().toLowerCase();
   const entries=[];
   // Period notes + day notes
   Y().periods.forEach((p,pidx)=>{
@@ -1306,6 +1379,23 @@ function renderJournal(){
   // Sort
   entries.sort((a,b)=>journalSort==='asc'?a.sortKey.localeCompare(b.sortKey):b.sortKey.localeCompare(a.sortKey));
 
+  // Filter by keyword
+  const filtered = kw
+    ? entries.filter(e => e.content.toLowerCase().includes(kw) || e.label.toLowerCase().includes(kw))
+    : entries;
+
+  // Show result count when searching
+  const countEl = document.getElementById('journalSearchCount');
+  if (countEl) {
+    if (kw) {
+      countEl.style.display = '';
+      countEl.textContent = `找到 ${filtered.length} 条`;
+      countEl.style.color = filtered.length ? 'var(--green)' : 'var(--red)';
+    } else {
+      countEl.style.display = 'none';
+    }
+  }
+
   // Year note editor (always at top if filter includes year)
   if(journalFilter==='all'||journalFilter==='year'){
     const ycard=document.createElement('div');ycard.className='journal-item';
@@ -1318,23 +1408,25 @@ function renderJournal(){
     setTimeout(()=>{const ta=document.getElementById('yearNoteTA');if(ta)autoResizeTA(ta);},50);
   }
 
-  if(!entries.length && journalFilter!=='year'){
+  if(!filtered.length && journalFilter!=='year'){
     const empty=document.createElement('div');
     empty.style.cssText='color:var(--t3);font-size:12px;padding:24px;text-align:center';
-    empty.textContent='暂无记录。在计划总览的每个周期底部写每日或10天总结后会显示在这里。';
+    empty.textContent=kw?'没有找到包含"'+kw+'"的日志记录。':'暂无记录。在计划总览的每个周期底部写每日或10天总结后会显示在这里。';
     area.appendChild(empty);
     return;
   }
 
-  entries.forEach(e=>{
+  filtered.forEach(e=>{
     const card=document.createElement('div');card.className='journal-item';
     const typeLabel=e.type==='period'?'10天总结':'每日记录';
     const typeColor=e.type==='period'?'var(--purple)':'var(--cyan)';
+    const displayContent = kw ? highlightKeyword(e.content, kw) : esc(e.content);
+    const displayLabel = kw ? highlightKeyword(e.label, kw) : esc(e.label);
     card.innerHTML=`<div class="ji-date">
-      <span style="font-size:11px;color:var(--text);font-weight:600">${e.label}</span>
+      <span style="font-size:11px;color:var(--text);font-weight:600">${displayLabel}</span>
       <span style="color:${typeColor};font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid ${typeColor};opacity:.8">${typeLabel}</span>
     </div>
-    <div class="ji-content">${e.content?esc(e.content):'<span class="ji-empty">无内容</span>'}</div>`;
+    <div class="ji-content" style="white-space:pre-wrap">${displayContent||'<span class="ji-empty">无内容</span>'}</div>`;
     area.appendChild(card);
   });
 }
@@ -1628,7 +1720,79 @@ function onDrop(e){
 }
 
 // Expose all functions called from HTML to global scope
-window.toggleSidebar=toggleSidebar;
+// ═══════════════════════════ COPY TO NEXT PERIOD ═══════════════════════════
+let copyNextSrcPidx = -1;
+
+function openCopyNext(pidx) {
+  const periods = Y().periods;
+  if (pidx >= periods.length - 1) { showToast('已是最后一个周期，无法复制'); return; }
+  copyNextSrcPidx = pidx;
+  const src = periods[pidx];
+  const dst = periods[pidx + 1];
+  const srcLabel = src.label + '（' + dLabel(src.start) + '—' + dLabel(src.end) + '）';
+  const dstLabel = dst.label + '（' + dLabel(dst.start) + '—' + dLabel(dst.end) + '）';
+  document.getElementById('copyNextSub').innerHTML =
+    '从 <strong style="color:var(--accent)">' + srcLabel + '</strong><br>复制到 <strong style="color:var(--green)">' + dstLabel + '</strong>';
+  // warn if destination already has habits
+  const dstHasHabits = dst.habits.some(h => h.name && h.name.trim());
+  const warnEl = document.getElementById('copyNextWarn');
+  if (dstHasHabits) {
+    warnEl.style.display = '';
+    warnEl.textContent = '⚠ 目标周期已有习惯数据，复制后将覆盖（打卡记录会清空）。';
+  } else {
+    warnEl.style.display = 'none';
+  }
+  document.getElementById('copyNextOv').classList.add('open');
+}
+
+function closeCopyNext() {
+  document.getElementById('copyNextOv').classList.remove('open');
+  copyNextSrcPidx = -1;
+}
+
+function doCopyNext() {
+  if (copyNextSrcPidx < 0) return;
+  const periods = Y().periods;
+  const src = periods[copyNextSrcPidx];
+  const dst = periods[copyNextSrcPidx + 1];
+  const doHabits = document.getElementById('copyOptHabits').checked;
+  const doSlot   = document.getElementById('copyOptSlot').checked;
+  const doMemo   = document.getElementById('copyOptMemo').checked;
+  const doTodo   = document.getElementById('copyOptTodo').checked;
+
+  if (doHabits) {
+    // Rebuild destination habits from source, preserving extra dst rows if src has fewer
+    const newHabits = src.habits.map(h => ({
+      name: h.name,
+      cat:  h.cat,
+      days: Array(10).fill(false),
+      mins: Array(10).fill(0),
+      timeSlot: doSlot ? (h.timeSlot || '') : '',
+      memo:     doMemo ? (h.memo || '') : ''
+    }));
+    // If dst had more rows than src, keep the extras as blank rows
+    const extra = dst.habits.slice(src.habits.length).map(h => ({
+      name:'', cat:'other', days:Array(10).fill(false), mins:Array(10).fill(0), timeSlot:'', memo:''
+    }));
+    dst.habits = [...newHabits, ...extra];
+  }
+
+  if (doTodo) {
+    const srcTodos = src.todos || [];
+    dst.todos = srcTodos.map(t => ({ text: t.text, done: false }));
+  }
+
+  save();
+  closeCopyNext();
+  renderGrid();
+  showToast('✅ 已复制到第 ' + dst.label + ' 周期！');
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+
+window.closeCopyNext=closeCopyNext;
+window.doCopyNext=doCopyNext;
+window.openCopyNext=openCopyNext;
 window.toggleYearDD=toggleYearDD;
 window.setYear=setYear;
 window.changeYear=changeYear;
@@ -1728,5 +1892,48 @@ window.deleteTodo=deleteTodo;
 </div>
 
 <div class="cal-popup" id="calPopup"><div class="cal-popup-title"><span id="calPopupTitle"></span><button class="cal-popup-close" onclick="closeCalPopup()">×</button></div><div id="calPopupBody"></div></div>
+
+<!-- COPY TO NEXT PERIOD MODAL -->
+<div class="copy-modal-overlay" id="copyNextOv" onclick="if(event.target===this)closeCopyNext()">
+  <div class="copy-modal">
+    <div class="copy-modal-title">➡ 复制到下一个10天</div>
+    <div class="copy-modal-sub" id="copyNextSub"></div>
+    <div class="copy-warning" id="copyNextWarn" style="display:none"></div>
+    <div class="copy-opt-row">
+      <label class="copy-opt">
+        <input type="checkbox" id="copyOptHabits" checked>
+        <div>
+          <div class="copy-opt-label">📋 习惯名称 & 分类</div>
+          <div class="copy-opt-desc">复制所有已命名的习惯行（打卡记录不复制）</div>
+        </div>
+      </label>
+      <label class="copy-opt">
+        <input type="checkbox" id="copyOptSlot" checked>
+        <div>
+          <div class="copy-opt-label">⏰ 时间安排</div>
+          <div class="copy-opt-desc">同时复制每个习惯的时间设置</div>
+        </div>
+      </label>
+      <label class="copy-opt">
+        <input type="checkbox" id="copyOptMemo" checked>
+        <div>
+          <div class="copy-opt-label">📌 备注内容</div>
+          <div class="copy-opt-desc">同时复制每个习惯的备注文字</div>
+        </div>
+      </label>
+      <label class="copy-opt">
+        <input type="checkbox" id="copyOptTodo">
+        <div>
+          <div class="copy-opt-label">📝 本期清单（TODO）</div>
+          <div class="copy-opt-desc">复制待办事项（已完成项也会复制，状态重置为未完成）</div>
+        </div>
+      </label>
+    </div>
+    <div class="copy-modal-actions">
+      <button class="btn btn-ghost" onclick="closeCopyNext()">取消</button>
+      <button class="btn btn-primary" onclick="doCopyNext()">确认复制</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
