@@ -265,7 +265,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .cal-day-num{font-size:9px}
 .cal-empty{opacity:0}
 .cal-today{box-shadow:0 0 0 1.5px var(--red) inset}
-/* ──────── STATS ──────── */
+/* ── Heatmap mobile card layout ── */
+@media (max-width:768px){
+  .hm-outer{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* stack habits as vertical cards on small screens */
+  .hm-mobile-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px}
+  .hm-mobile-name{font-size:12px;color:var(--text);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .hm-mobile-row{display:flex;gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .hm-mobile-cell{flex-shrink:0;width:32px;height:32px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);font-weight:700;cursor:pointer}
+  .hm-mobile-label{font-size:8px;color:var(--t3);font-family:var(--mono);text-align:center;margin-top:2px}
+}
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px}
 .sc h3{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--t3);font-family:var(--mono);margin-bottom:12px}
@@ -383,6 +392,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   .dnc{width:28px;font-size:8px}
   .period-hd{flex-wrap:wrap;gap:5px;padding:8px 10px}
   .p-dates{font-size:9px}
+  .btn-copy-next{display:none} /* 移动端隐藏，防止 header 溢出 */
   .filter-bar{gap:5px}
   .search-box{width:100%;margin-left:0;margin-top:4px}
   .stats-grid{grid-template-columns:1fr}
@@ -775,11 +785,15 @@ function ensureYear(y){
     });
   }
 }
-function save(){try{localStorage.setItem('plan36_v4',JSON.stringify(db));}catch(e){showToast('❌ 存储失败（可能已满）');}}
+function save(){
+  try{localStorage.setItem('plan36_v4',JSON.stringify(db));}
+  catch(e){showToast('❌ 存储已满！请点击 JSON 按钮导出备份，避免数据丢失');}
+}
+// 页面关闭/刷新前强制保存，防止最后编辑丢失
+window.addEventListener('beforeunload',()=>{save();});
 function load(){try{const s=localStorage.getItem('plan36_v4');if(s)db=JSON.parse(s);}catch(e){}ensureYear(currentYear);}
 
-// Autosave every 30s
-setInterval(()=>{save();},30000);
+// 每次操作后都会调用 save()，beforeunload 也会兜底，无需额外定时保存
 
 function Y(){return db[String(currentYear)];}
 function cats(){return Y().categories;}
@@ -804,7 +818,17 @@ function buildYearDD(){
   }
 }
 function toggleYearDD(){const dd=document.getElementById('yearDD');dd.classList.toggle('open');if(dd.classList.contains('open'))buildYearDD();}
-function setYear(y){currentYear=y;document.getElementById('yearDisplay').textContent=y;document.getElementById('yearDD').classList.remove('open');ensureYear(y);save();renderAll();}
+function setYear(y){
+  currentYear=y;
+  document.getElementById('yearDisplay').textContent=y;
+  document.getElementById('yearDD').classList.remove('open');
+  ensureYear(y);save();
+  renderAll();
+  // 刷新当前可见的非 grid tab（热力图 / 统计 / 日志）
+  if(document.getElementById('tab-heatmap').style.display!=='none') renderHeatmap();
+  if(document.getElementById('tab-stats').style.display!=='none') renderStats();
+  if(document.getElementById('tab-journal').style.display!=='none') renderJournal();
+}
 function changeYear(d){setYear(Math.max(MIN_YEAR,Math.min(MAX_YEAR,currentYear+d)));}
 document.addEventListener('click',e=>{if(!document.getElementById('yearSel').contains(e.target))document.getElementById('yearDD').classList.remove('open');});
 
@@ -843,12 +867,13 @@ function renderSidebar(){
       });
     });
   });
-  // streak
+  // streak — pre-build a date→hasAnyCheckIn set for O(1) lookup per day
+  const checkinDates=new Set();
+  Y().periods.forEach(p=>{p.days10.forEach((diso,di)=>{if(p.habits.some(h=>h.name&&h.days[di]))checkinDates.add(localISO(toD(diso)));});});
   const td=todayMid();let chk=new Date(td);
   for(let i=0;i<400;i++){
-    let any=false;
-    Y().periods.forEach(p=>{p.days10.forEach((diso,di)=>{const dt=toD(diso);dt.setHours(0,0,0,0);if(dt.getTime()===chk.getTime())p.habits.forEach(h=>{if(h.name&&h.days[di])any=true;});});});
-    if(!any)break;streak++;chk.setDate(chk.getDate()-1);
+    if(!checkinDates.has(localISO(chk)))break;
+    streak++;chk.setDate(chk.getDate()-1);
   }
   const pct=tot?Math.round(done/tot*100):0;
   document.getElementById('sbFill').style.width=pct+'%';
@@ -892,8 +917,8 @@ function addCat(){
 function deleteCat(id){
   const idx=cats().findIndex(c=>c.id===id);
   if(idx<0)return;
-  if(['work','life','study'].includes(id)){showToast('工作/生活/学习为必要分类，无法删除');return;}
-  // re-assign habits
+  if(['work','life','study','other'].includes(id)){showToast('该分类为必要分类，无法删除');return;}
+  // re-assign habits using this category to 'other'
   Y().periods.forEach(p=>p.habits.forEach(h=>{if(h.cat===id)h.cat='other';}));
   Y().categories.splice(idx,1);
   save();renderAll();
@@ -1024,7 +1049,7 @@ function buildTodoHTML(pidx){
     <div class="todo-item">
       <div class="todo-cb${t.done?' done':''}" onclick="toggleTodo(${pidx},${ti})"></div>
       <textarea class="todo-text${t.done?' done-text':''}" rows="1"
-        onchange="updateTodo(${pidx},${ti},this.value)"
+        oninput="updateTodo(${pidx},${ti},this.value)"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addTodo(${pidx});return false;}"
         >${esc(t.text)}</textarea>
       <button class="todo-del" onclick="deleteTodo(${pidx},${ti})">×</button>
@@ -1155,6 +1180,8 @@ function setHmMode(mode,btn){
 function renderHeatmap(){
   const cont=document.getElementById('hmContent');cont.innerHTML='';
   if(hmMode==='cal'){renderCalHeatmap(cont);return;}
+  // Mobile: render vertical cards instead of wide table
+  if(window.innerWidth<=768){renderHeatmapMobile(cont);return;}
   const tbl=document.createElement('table');tbl.className='hm-table';
   // collect habits
   const habits={};
@@ -1196,6 +1223,45 @@ function renderHeatmap(){
   }
   const wrap=document.createElement('div');wrap.className='hm-outer';wrap.appendChild(tbl);
   cont.appendChild(wrap);
+}
+
+function renderHeatmapMobile(cont){
+  // 移动端：竖向卡片布局，每个习惯独立一张卡，周期横向滚动
+  const habits={};
+  Y().periods.forEach((p,pidx)=>{
+    p.habits.forEach(h=>{
+      if(!h.name)return;
+      if(!habits[h.name]) habits[h.name]={cat:h.cat,data:[]};
+      habits[h.name].data.push({pidx,label:p.label,done:h.days.filter(Boolean).length,mins:h.mins.reduce((a,b)=>a+(b||0),0)});
+    });
+  });
+  if(!Object.keys(habits).length){
+    cont.innerHTML='<div style="padding:30px;text-align:center;color:var(--t3)">暂无命名习惯</div>';return;
+  }
+  const allVals=Object.values(habits).flatMap(info=>info.data.map(d=>hmMode==='time'?d.mins:d.done));
+  const maxVal=Math.max(...allVals,1);
+  Object.entries(habits).sort((a,b)=>a[0].localeCompare(b[0],'zh')).forEach(([name,info])=>{
+    const cc=catById(info.cat).color;
+    const card=document.createElement('div');card.className='hm-mobile-card';
+    let cellsHTML='';
+    info.data.forEach(d=>{
+      const val=hmMode==='time'?d.mins:d.done;
+      const pct=Math.min(100,Math.round(val/maxVal*100));
+      const bg=pct>0?cc:'var(--s2)';
+      const op=pct>0?(0.15+pct/100*0.85):1;
+      const txt=hmMode==='time'?(d.mins?mDisp(d.mins):''):(d.done?d.done+'/10':'');
+      const txtCol=isDark(cc)||pct>50?'rgba(255,255,255,.9)':'rgba(0,0,0,.7)';
+      cellsHTML+=`<div style="flex-shrink:0;text-align:center">
+        <div class="hm-mobile-cell" style="background:${bg};opacity:${op}" title="${d.label}: ${d.done}/10${d.mins?' | '+mDisp(d.mins):''}">
+          <span style="color:${pct>30?txtCol:'var(--t2)'}">${txt}</span>
+        </div>
+        <div class="hm-mobile-label">${esc(d.label.replace('-36',''))}</div>
+      </div>`;
+    });
+    card.innerHTML=`<div class="hm-mobile-name"><span style="width:10px;height:10px;border-radius:50%;background:${cc};flex-shrink:0;display:inline-block"></span>${esc(name)}</div>
+      <div class="hm-mobile-row">${cellsHTML}</div>`;
+    cont.appendChild(card);
+  });
 }
 
 function renderCalHeatmap(cont){
@@ -1259,9 +1325,10 @@ function renderStats(){
       if(!catT[h.cat]&&catT[h.cat]!==0){catT[h.cat]=0;catD[h.cat]=0;catMins[h.cat]=0;}
       catT[h.cat]=(catT[h.cat]||0)+10;
       catD[h.cat]=(catD[h.cat]||0)+h.days.filter(Boolean).length;
-      if(!habitStats[h.name]) habitStats[h.name]={done:0,tot:0,cat:h.cat,mins:0};
+      if(!habitStats[h.name]) habitStats[h.name]={done:0,tot:0,cat:h.cat,mins:0,periods:0};
       habitStats[h.name].done+=h.days.filter(Boolean).length;
       habitStats[h.name].tot+=10;
+      habitStats[h.name].periods+=1; // 记录实际参与的期数
       p.days10.forEach((diso,di)=>{
         const mon=toD(diso).getMonth();
         mTot[mon]++;
@@ -1270,13 +1337,18 @@ function renderStats(){
     });
   });
   const th=Math.floor(totalMins/60),tm=totalMins%60;
+  // 实际打卡过的天数（去重，用 Set 避免多个习惯同一天重复计算）
+  const checkedDaySet=new Set();
+  Y().periods.forEach(p=>{p.days10.forEach((diso,di)=>{if(p.habits.some(h=>h.name&&h.days[di]))checkedDaySet.add(localISO(toD(diso)));});});
+  const activeDays=Math.max(checkedDaySet.size,1);
+  const avgMins=Math.round(totalMins/activeDays);
   // ── Time card ──
   const maxCM=Math.max(...Object.values(catMins),1);
   const tc=document.createElement('div');tc.className='sc';
   tc.innerHTML=`<h3>全年时长统计</h3>
     <div class="ts-grid">
       <div class="ts-b"><div class="ts-l">全年总时长</div><div class="ts-v">${th}h${tm}m</div><div class="ts-s">全年累计</div></div>
-      <div class="ts-b"><div class="ts-l">日均时长</div><div class="ts-v">${Math.round(totalMins/365)}m</div><div class="ts-s">分钟/天</div></div>
+      <div class="ts-b"><div class="ts-l">日均时长</div><div class="ts-v">${avgMins}m</div><div class="ts-s">打卡日均（${activeDays}天）</div></div>
     </div>`+cats().map(c=>{const m=catMins[c.id]||0;const h2=Math.floor(m/60),m2=m%60;return`<div class="br"><div class="br-l"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c.color};margin-right:5px"></span>${esc(c.name)}</div>
     <div class="br-bg"><div class="br-fill" style="width:${Math.round(m/maxCM*100)}%;background:${c.color}"></div></div>
     <div class="br-v">${h2}h${m2}m</div></div>`;}).join('');
@@ -1292,7 +1364,7 @@ function renderStats(){
       <td style="color:${cat.color}">${esc(cat.name)}</td>
       <td style="color:var(--accent)">${s.done}/${s.tot}</td>
       <td style="color:var(--green)">${mDisp(s.mins)}</td>
-      <td style="color:var(--t2)">${mDisp(Math.round(s.mins/36))}</td>
+      <td style="color:var(--t2)">${mDisp(Math.round(s.mins/Math.max(s.periods,1)))}</td>
     </tr>`;}).join('')+'</tbody></table>':'<div style="color:var(--t3);font-size:11px">尚无时长数据，在打卡后点击⏱记录时长</div>');
   grid.appendChild(htCard);
 
@@ -1348,9 +1420,13 @@ function renderStats(){
 // ═══════════════════════════ JOURNAL ═══════════════════════════
 function highlightKeyword(text, kw) {
   if (!kw) return esc(text);
+  // First escape the source text, then escape the keyword the same way,
+  // so the regex operates entirely on HTML-safe strings and the match `m`
+  // is already escaped — safe to inject into innerHTML.
   const escaped = esc(text);
-  const kwEsc = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return escaped.replace(new RegExp(kwEsc.replace(/&amp;/g,'&amp;').replace(/</g,'&lt;'), 'gi'),
+  const kwEscaped = esc(kw); // HTML-encode the keyword too
+  const kwRegex = kwEscaped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escaped.replace(new RegExp(kwRegex, 'gi'),
     m => `<mark style="background:rgba(251,191,36,.35);color:var(--yellow);border-radius:2px;padding:0 1px">${m}</mark>`);
 }
 
@@ -1401,7 +1477,7 @@ function renderJournal(){
     const ycard=document.createElement('div');ycard.className='journal-item';
     const yn=Y().yearNote||'';
     ycard.innerHTML=`<div class="ji-date"><span style="color:var(--accent);font-weight:700">🏆 ${currentYear} 年度总结</span></div>
-      <textarea class="ps-textarea" id="yearNoteTA" placeholder="写下这一年的总结…" style="margin-top:8px;min-height:120px" oninput="autoResizeTA(this)" onchange="saveYearNote()">${esc(yn)}</textarea>
+      <textarea class="ps-textarea" id="yearNoteTA" placeholder="写下这一年的总结…" style="margin-top:8px;min-height:120px" oninput="autoResizeTA(this);saveYearNote()">${esc(yn)}</textarea>
       <div class="ps-save-row"><span class="ps-saved-hint" id="ynHint">✓ 已保存</span><button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="saveYearNote()">保存</button></div>`;
     area.appendChild(ycard);
     // auto-resize after render
@@ -1479,7 +1555,13 @@ function updateSlot(pidx,hidx,val){Y().periods[pidx].habits[hidx].timeSlot=val.t
 function updateMemo(pidx,hidx,val){Y().periods[pidx].habits[hidx].memo=val;save();}
 function autoResizeTA(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
 function addHabit(pidx){Y().periods[pidx].habits.push({name:'',cat:'other',days:Array(10).fill(false),mins:Array(10).fill(0),timeSlot:'',memo:''});save();renderGrid();}
-function deleteHabit(pidx,hidx){if(Y().periods[pidx].habits.length<=1){showToast('至少保留一行');return;}Y().periods[pidx].habits.splice(hidx,1);save();renderAll();}
+function deleteHabit(pidx,hidx){
+  if(Y().periods[pidx].habits.length<=1){showToast('至少保留一行');return;}
+  Y().periods[pidx].habits.splice(hidx,1);
+  save();
+  renderGrid();    // 只刷新主表格即可
+  renderSidebar(); // 侧边栏统计数字也需要更新
+}
 
 function openCatMenu(e,pidx,hidx){
   e.stopPropagation();catTarget={pidx,hidx};
@@ -1548,7 +1630,11 @@ function switchTab(name,el){
 
 }
 function setFilter(mode,btn){
-  filterMode=mode;document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');renderGrid();
+  filterMode=mode;
+  // 只操作 grid tab 内的筛选芯片，避免影响日志 tab 的状态
+  document.querySelectorAll('#tab-grid .fchip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
 }
 
 // ═══════════════════════════ EXPORT/IMPORT ═══════════════════════════
@@ -1566,7 +1652,18 @@ function openImport(){document.getElementById('importOv').classList.add('open');
 function doImport(){
   try{
     const parsed=JSON.parse(document.getElementById('importTA').value.trim());
-    if(parsed.periods){db[String(currentYear)]=parsed;}else{Object.assign(db,parsed);}
+    // 基本结构校验：单年格式需有 periods 数组；多年格式每个值需有 periods 数组
+    if(parsed.periods){
+      if(!Array.isArray(parsed.periods)||!parsed.periods.length) throw new Error('periods 数组为空或格式错误');
+      db[String(currentYear)]=parsed;
+    } else {
+      const keys=Object.keys(parsed);
+      if(!keys.length) throw new Error('导入数据为空对象');
+      keys.forEach(k=>{
+        if(!parsed[k].periods||!Array.isArray(parsed[k].periods)) throw new Error(`年份 ${k} 缺少 periods 字段`);
+      });
+      Object.assign(db,parsed);
+    }
     save();ensureYear(currentYear);renderAll();closeOverlay('importOv');showToast('✅ 导入成功');
   }catch(e){showToast('❌ 导入失败: '+e.message);}
 }
